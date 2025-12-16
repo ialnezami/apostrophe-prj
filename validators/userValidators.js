@@ -100,10 +100,22 @@ const deleteUserValidation = [
     .withMessage('invalid user id')
 ];
 
+const changeRoleValidation = [
+  param('id')
+    .isMongoId()
+    .withMessage('invalid user id'),
+
+  body('role')
+    .notEmpty()
+    .withMessage('role is required')
+    .isIn(['user', 'admin'])
+    .withMessage('role must be either user or admin')
+];
+
 module.exports = {
   signupValidation,
   loginValidation,
   updateUserValidation,
-  deleteUserValidation
+  deleteUserValidation,
+  changeRoleValidation
 };
-

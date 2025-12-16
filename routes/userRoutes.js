@@ -3,8 +3,9 @@ const router = express.Router();
 const User = require('../models/User');
 const HTTP_STATUS = require('../constants/httpStatus');
 const { generateToken } = require('../utils/jwt');
-const { signupValidation, loginValidation, updateUserValidation, deleteUserValidation } = require('../validators/userValidators');
+const { signupValidation, loginValidation, updateUserValidation, deleteUserValidation, changeRoleValidation } = require('../validators/userValidators');
 const { handleValidationErrors } = require('../middleware/validation');
+const { authenticate, authorize } = require('../middleware/auth');
 
 router.post('/signup', signupValidation, handleValidationErrors, async (req, res) => {
   try {
@@ -88,7 +89,7 @@ router.post('/login', loginValidation, handleValidationErrors, async (req, res) 
   }
 });
 
-router.get('/list', async (req, res) => {
+router.get('/list', authenticate, authorize('admin'), async (req, res) => {
   try {
     const usersList = await User.find().select('-password');
 
@@ -108,16 +109,24 @@ router.get('/list', async (req, res) => {
   }
 });
 
-router.put('/:id', updateUserValidation, handleValidationErrors, async (req, res) => {
+router.put('/:id', authenticate, updateUserValidation, handleValidationErrors, async (req, res) => {
   try {
     const userId = req.params.id;
     const { name, email, password, role } = req.body;
+    const currentUser = req.user;
 
     const user = await User.findById(userId);
     if (!user) {
       return res.status(HTTP_STATUS.NOT_FOUND).json({
         status: 'error',
         message: 'user not found'
+      });
+    }
+
+    if (currentUser.id !== userId && currentUser.role !== 'admin') {
+      return res.status(HTTP_STATUS.FORBIDDEN).json({
+        status: 'error',
+        message: 'you can only update your own profile'
       });
     }
 
@@ -143,6 +152,12 @@ router.put('/:id', updateUserValidation, handleValidationErrors, async (req, res
     }
 
     if (role !== undefined) {
+      if (currentUser.role !== 'admin') {
+        return res.status(HTTP_STATUS.FORBIDDEN).json({
+          status: 'error',
+          message: 'only admins can change user roles'
+        });
+      }
       updateData.role = role;
     }
 
@@ -180,7 +195,7 @@ router.put('/:id', updateUserValidation, handleValidationErrors, async (req, res
   }
 });
 
-router.delete('/:id', deleteUserValidation, handleValidationErrors, async (req, res) => {
+router.delete('/:id', authenticate, authorize('admin'), deleteUserValidation, handleValidationErrors, async (req, res) => {
   try {
     const userId = req.params.id;
 
@@ -195,6 +210,37 @@ router.delete('/:id', deleteUserValidation, handleValidationErrors, async (req, 
     res.status(HTTP_STATUS.OK).json({
       status: 'success',
       message: 'user deleted successfully'
+    });
+
+  } catch (error) {
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      status: 'error',
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
+router.patch('/:id/role', authenticate, authorize('admin'), changeRoleValidation, handleValidationErrors, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { role } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        status: 'error',
+        message: 'user not found'
+      });
+    }
+
+    user.role = role;
+    await user.save();
+
+    res.status(HTTP_STATUS.OK).json({
+      status: 'success',
+      message: 'user role updated successfully',
+      data: user.toJSON()
     });
 
   } catch (error) {
