@@ -137,5 +137,137 @@ router.get('/list', (req, res) => {
   }
 });
 
+router.put('/:id', (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const { name, email, password, confirmPassword, role } = req.body;
+
+    const userIndex = users.findIndex(user => user.id === userId);
+    if (userIndex === -1) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        status: 'error',
+        message: 'user not found'
+      });
+    }
+
+    const user = users[userIndex];
+    const updateData = {};
+
+    if (name !== undefined) {
+      if (!name.trim()) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: 'error',
+          message: 'name cannot be empty'
+        });
+      }
+      updateData.name = name;
+    }
+
+    if (email !== undefined) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: 'error',
+          message: 'invald emial format'
+        });
+      }
+
+      const existingUser = users.find(u => u.email === email && u.id !== userId);
+      if (existingUser) {
+        return res.status(HTTP_STATUS.CONFLICT).json({
+          status: 'error',
+          message: 'User with this emial alredy exists'
+        });
+      }
+      updateData.email = email;
+    }
+
+    if (password !== undefined) {
+      if (!confirmPassword) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: 'error',
+          message: 'confirm password is required when updating password'
+        });
+      }
+
+      if (password !== confirmPassword) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: 'error',
+          message: 'password and confirm passwrod do not match'
+        });
+      }
+
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+      if (!passwordRegex.test(password)) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: 'error',
+          message: 'password must be at least 8 charcters long and contain at least one uppercase lette, one lowercase letter, and one number'
+        });
+      }
+      updateData.password = password;
+    }
+
+    if (role !== undefined) {
+      if (role !== 'user' && role !== 'admin') {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: 'error',
+          message: 'role must be either user or admin'
+        });
+      }
+      updateData.role = role;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        status: 'error',
+        message: 'no fields to update'
+      });
+    }
+
+    user.update(updateData);
+
+    res.status(HTTP_STATUS.OK).json({
+      status: 'success',
+      message: 'user updated successfully',
+      data: user.toJSON()
+    });
+
+  } catch (error) {
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      status: 'error',
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
+router.delete('/:id', (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+
+    const userIndex = users.findIndex(user => user.id === userId);
+    if (userIndex === -1) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        status: 'error',
+        message: 'user not found'
+      });
+    }
+
+    users.splice(userIndex, 1);
+
+    res.status(HTTP_STATUS.OK).json({
+      status: 'success',
+      message: 'user deleted successfully'
+    });
+
+  } catch (error) {
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      status: 'error',
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
 

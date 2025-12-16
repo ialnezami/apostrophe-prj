@@ -9,6 +9,14 @@ class User {
     this.updatedAt = new Date();
   }
 
+  update(data) {
+    if (data.name !== undefined) this.name = data.name;
+    if (data.email !== undefined) this.email = data.email;
+    if (data.password !== undefined) this.password = data.password;
+    if (data.role !== undefined) this.role = data.role;
+    this.updatedAt = new Date();
+  }
+
   toJSON() {
     return {
       id: this.id,
