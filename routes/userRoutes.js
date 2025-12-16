@@ -6,14 +6,11 @@ const { generateToken } = require('../utils/jwt');
 const { signupValidation, loginValidation, updateUserValidation, deleteUserValidation } = require('../validators/userValidators');
 const { handleValidationErrors } = require('../middleware/validation');
 
-let users = [];
-let userIdCounter = 1;
-
-router.post('/signup', signupValidation, handleValidationErrors, (req, res) => {
+router.post('/signup', signupValidation, handleValidationErrors, async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    const existingUser = users.find(user => user.email === email);
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(HTTP_STATUS.CONFLICT).json({
         status: 'error',
@@ -21,8 +18,11 @@ router.post('/signup', signupValidation, handleValidationErrors, (req, res) => {
       });
     }
 
-    const newUser = new User(userIdCounter++, name, email, password);
-    users.push(newUser);
+    const newUser = await User.create({
+      name,
+      email,
+      password
+    });
 
     res.status(HTTP_STATUS.CREATED).json({
       status: 'success',
@@ -31,6 +31,12 @@ router.post('/signup', signupValidation, handleValidationErrors, (req, res) => {
     });
 
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(HTTP_STATUS.CONFLICT).json({
+        status: 'error',
+        message: 'User with this emial alredy exists'
+      });
+    }
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
       status: 'error',
       message: 'Internal server error',
@@ -39,11 +45,11 @@ router.post('/signup', signupValidation, handleValidationErrors, (req, res) => {
   }
 });
 
-router.post('/login', loginValidation, handleValidationErrors, (req, res) => {
+router.post('/login', loginValidation, handleValidationErrors, async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = users.find(u => u.email === email);
+    const user = await User.findOne({ email });
     if (!user) {
       return res.status(HTTP_STATUS.UNAUTHORIZED).json({
         status: 'error',
@@ -59,7 +65,7 @@ router.post('/login', loginValidation, handleValidationErrors, (req, res) => {
     }
 
     const token = generateToken({
-      id: user.id,
+      id: user._id.toString(),
       email: user.email,
       role: user.role
     });
@@ -82,9 +88,9 @@ router.post('/login', loginValidation, handleValidationErrors, (req, res) => {
   }
 });
 
-router.get('/list', (req, res) => {
+router.get('/list', async (req, res) => {
   try {
-    const usersList = users.map(user => user.toJSON());
+    const usersList = await User.find().select('-password');
 
     res.status(HTTP_STATUS.OK).json({
       status: 'success',
@@ -102,20 +108,19 @@ router.get('/list', (req, res) => {
   }
 });
 
-router.put('/:id', updateUserValidation, handleValidationErrors, (req, res) => {
+router.put('/:id', updateUserValidation, handleValidationErrors, async (req, res) => {
   try {
-    const userId = parseInt(req.params.id);
+    const userId = req.params.id;
     const { name, email, password, role } = req.body;
 
-    const userIndex = users.findIndex(user => user.id === userId);
-    if (userIndex === -1) {
+    const user = await User.findById(userId);
+    if (!user) {
       return res.status(HTTP_STATUS.NOT_FOUND).json({
         status: 'error',
         message: 'user not found'
       });
     }
 
-    const user = users[userIndex];
     const updateData = {};
 
     if (name !== undefined) {
@@ -123,7 +128,7 @@ router.put('/:id', updateUserValidation, handleValidationErrors, (req, res) => {
     }
 
     if (email !== undefined) {
-      const existingUser = users.find(u => u.email === email && u.id !== userId);
+      const existingUser = await User.findOne({ email, _id: { $ne: userId } });
       if (existingUser) {
         return res.status(HTTP_STATUS.CONFLICT).json({
           status: 'error',
@@ -148,15 +153,25 @@ router.put('/:id', updateUserValidation, handleValidationErrors, (req, res) => {
       });
     }
 
-    user.update(updateData);
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      updateData,
+      { new: true, runValidators: true }
+    );
 
     res.status(HTTP_STATUS.OK).json({
       status: 'success',
       message: 'user updated successfully',
-      data: user.toJSON()
+      data: updatedUser.toJSON()
     });
 
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(HTTP_STATUS.CONFLICT).json({
+        status: 'error',
+        message: 'User with this emial alredy exists'
+      });
+    }
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
       status: 'error',
       message: 'Internal server error',
@@ -165,19 +180,17 @@ router.put('/:id', updateUserValidation, handleValidationErrors, (req, res) => {
   }
 });
 
-router.delete('/:id', deleteUserValidation, handleValidationErrors, (req, res) => {
+router.delete('/:id', deleteUserValidation, handleValidationErrors, async (req, res) => {
   try {
-    const userId = parseInt(req.params.id);
+    const userId = req.params.id;
 
-    const userIndex = users.findIndex(user => user.id === userId);
-    if (userIndex === -1) {
+    const user = await User.findByIdAndDelete(userId);
+    if (!user) {
       return res.status(HTTP_STATUS.NOT_FOUND).json({
         status: 'error',
         message: 'user not found'
       });
     }
-
-    users.splice(userIndex, 1);
 
     res.status(HTTP_STATUS.OK).json({
       status: 'success',

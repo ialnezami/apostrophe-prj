@@ -49,7 +49,7 @@ const loginValidation = [
 
 const updateUserValidation = [
   param('id')
-    .isInt({ min: 1 })
+    .isMongoId()
     .withMessage('invalid user id'),
 
   body('name')
@@ -96,7 +96,7 @@ const updateUserValidation = [
 
 const deleteUserValidation = [
   param('id')
-    .isInt({ min: 1 })
+    .isMongoId()
     .withMessage('invalid user id')
 ];
 
