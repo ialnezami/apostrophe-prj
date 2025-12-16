@@ -28,7 +28,22 @@ PORT=3000
 MONGODB_URI=mongodb://localhost:27017/apostrophe_db
 JWT_SECRET=your-secret-key-change-in-production
 JWT_EXPIRES_IN=24h
+
+# Default Admin User (created automatically on first run)
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=Admin123
+ADMIN_NAME=Admin User
 ```
+
+### Default Admin User
+
+A default admin user is automatically created when the server starts for the first time (if it doesn't already exist). Default credentials:
+
+- **Email:** `admin@example.com` (or set `ADMIN_EMAIL` in `.env`)
+- **Password:** `Admin123` (or set `ADMIN_PASSWORD` in `.env`)
+- **Name:** `Admin User` (or set `ADMIN_NAME` in `.env`)
+
+**⚠️ Important:** Change the default admin password in production!
 
 
 
