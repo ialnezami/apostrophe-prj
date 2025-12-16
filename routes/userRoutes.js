@@ -3,43 +3,15 @@ const router = express.Router();
 const User = require('../models/User');
 const HTTP_STATUS = require('../constants/httpStatus');
 const { generateToken } = require('../utils/jwt');
+const { signupValidation, loginValidation, updateUserValidation, deleteUserValidation } = require('../validators/userValidators');
+const { handleValidationErrors } = require('../middleware/validation');
 
 let users = [];
 let userIdCounter = 1;
 
-router.post('/signup', (req, res) => {
+router.post('/signup', signupValidation, handleValidationErrors, (req, res) => {
   try {
-    const { name, email, password, confirmPassword } = req.body;
-
-    if (!name || !email || !password || !confirmPassword) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: 'error',
-        message: 'all fields are required'
-      });
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: 'error',
-        message: 'invald emial format'
-      });
-    }
-
-    if (password !== confirmPassword) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: 'error',
-        message: 'password and confirm passwrod do not match'
-      });
-    }
-
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-    if (!passwordRegex.test(password)) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: 'error',
-        message: 'password must be at least 8 charcters long and contain at least one uppercase lette, one lowercase letter, and one number'
-      });
-    }
+    const { name, email, password } = req.body;
 
     const existingUser = users.find(user => user.email === email);
     if (existingUser) {
@@ -67,16 +39,9 @@ router.post('/signup', (req, res) => {
   }
 });
 
-router.post('/login', (req, res) => {
+router.post('/login', loginValidation, handleValidationErrors, (req, res) => {
   try {
     const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: 'error',
-        message: 'email and password are required'
-      });
-    }
 
     const user = users.find(u => u.email === email);
     if (!user) {
@@ -137,10 +102,10 @@ router.get('/list', (req, res) => {
   }
 });
 
-router.put('/:id', (req, res) => {
+router.put('/:id', updateUserValidation, handleValidationErrors, (req, res) => {
   try {
     const userId = parseInt(req.params.id);
-    const { name, email, password, confirmPassword, role } = req.body;
+    const { name, email, password, role } = req.body;
 
     const userIndex = users.findIndex(user => user.id === userId);
     if (userIndex === -1) {
@@ -154,24 +119,10 @@ router.put('/:id', (req, res) => {
     const updateData = {};
 
     if (name !== undefined) {
-      if (!name.trim()) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({
-          status: 'error',
-          message: 'name cannot be empty'
-        });
-      }
       updateData.name = name;
     }
 
     if (email !== undefined) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({
-          status: 'error',
-          message: 'invald emial format'
-        });
-      }
-
       const existingUser = users.find(u => u.email === email && u.id !== userId);
       if (existingUser) {
         return res.status(HTTP_STATUS.CONFLICT).json({
@@ -183,37 +134,10 @@ router.put('/:id', (req, res) => {
     }
 
     if (password !== undefined) {
-      if (!confirmPassword) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({
-          status: 'error',
-          message: 'confirm password is required when updating password'
-        });
-      }
-
-      if (password !== confirmPassword) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({
-          status: 'error',
-          message: 'password and confirm passwrod do not match'
-        });
-      }
-
-      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-      if (!passwordRegex.test(password)) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({
-          status: 'error',
-          message: 'password must be at least 8 charcters long and contain at least one uppercase lette, one lowercase letter, and one number'
-        });
-      }
       updateData.password = password;
     }
 
     if (role !== undefined) {
-      if (role !== 'user' && role !== 'admin') {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({
-          status: 'error',
-          message: 'role must be either user or admin'
-        });
-      }
       updateData.role = role;
     }
 
@@ -241,7 +165,7 @@ router.put('/:id', (req, res) => {
   }
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', deleteUserValidation, handleValidationErrors, (req, res) => {
   try {
     const userId = parseInt(req.params.id);
 
