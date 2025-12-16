@@ -32,8 +32,58 @@ JWT_EXPIRES_IN=24h
 
 
 
+### Running the Server
+
 ```bash
 npm start
 ```
+
+The server will start on `http://localhost:3000` and connect to MongoDB automatically.
+
+## API Documentation
+
+### Swagger UI
+
+Interactive API documentation is available at:
+```
+http://localhost:3000/api-docs
+```
+
+Swagger UI provides:
+- Complete API endpoint documentation
+- Interactive testing interface
+- Request/response examples
+- Authentication support (JWT Bearer token)
+- Schema definitions
+
+### Using Swagger UI
+
+1. Start the server: `npm start`
+2. Open your browser and navigate to `http://localhost:3000/api-docs`
+3. Click on any endpoint to expand it
+4. Click "Try it out" to test the endpoint
+5. Fill in the required parameters/body
+6. Click "Execute" to send the request
+7. View the response below
+
+### Authentication in Swagger
+
+For protected endpoints:
+1. First, use the `/api/users/login` endpoint to get a JWT token
+2. Click the "Authorize" button at the top of the Swagger UI
+3. Enter your token in the format: `Bearer <your-token>`
+4. Click "Authorize" and then "Close"
+5. Now you can test protected endpoints
+
+## API Endpoints
+
+All endpoints are documented in Swagger UI. Here's a quick overview:
+
+- **POST /api/users/signup** - Register a new user
+- **POST /api/users/login** - Login and get JWT token
+- **GET /api/users/list** - Get all users (Admin only)
+- **PUT /api/users/:id** - Update user profile
+- **DELETE /api/users/:id** - Delete user (Admin only)
+- **PATCH /api/users/:id/role** - Change user role (Admin only)
 
 
