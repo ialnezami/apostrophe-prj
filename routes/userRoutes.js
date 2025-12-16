@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const HTTP_STATUS = require('../constants/httpStatus');
+const { generateToken } = require('../utils/jwt');
 
 let users = [];
 let userIdCounter = 1;
@@ -55,6 +56,76 @@ router.post('/signup', (req, res) => {
       status: 'success',
       message: 'user registered successfully',
       data: newUser.toJSON()
+    });
+
+  } catch (error) {
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      status: 'error',
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
+router.post('/login', (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        status: 'error',
+        message: 'email and password are required'
+      });
+    }
+
+    const user = users.find(u => u.email === email);
+    if (!user) {
+      return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+        status: 'error',
+        message: 'invalid email or password'
+      });
+    }
+
+    if (user.password !== password) {
+      return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+        status: 'error',
+        message: 'invalid email or password'
+      });
+    }
+
+    const token = generateToken({
+      id: user.id,
+      email: user.email,
+      role: user.role
+    });
+
+    res.status(HTTP_STATUS.OK).json({
+      status: 'success',
+      message: 'login successful',
+      data: {
+        user: user.toJSON(),
+        token: token
+      }
+    });
+
+  } catch (error) {
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      status: 'error',
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
+router.get('/list', (req, res) => {
+  try {
+    const usersList = users.map(user => user.toJSON());
+
+    res.status(HTTP_STATUS.OK).json({
+      status: 'success',
+      message: 'users retrieved successfully',
+      data: usersList,
+      count: usersList.length
     });
 
   } catch (error) {
